@@ -63,3 +63,24 @@ __device__ __forceinline__ float block_reduce_max(float val) {
   val = warp_reduce_max<NUM_WARPS>(val);
   return val;
 }
+
+// Kernel to test block reduce sum and max
+__global__ void test_reduce_kernels() {
+  float val = static_cast<float>(threadIdx.x);
+  
+  float sum = block_reduce_sum<128>(val);
+  float max = block_reduce_max<128>(val);
+  
+  if (threadIdx.x == 0) {
+    printf("Block reduce sum: %f\n", sum);
+    printf("Block reduce max: %f\n", max);
+  }
+}
+
+int main() {
+  // Launch kernel with 1 block of 128 threads
+  test_reduce_kernels<<<1, 128>>>();
+  cudaDeviceSynchronize();
+  
+  return 0;
+}

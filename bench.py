@@ -8,7 +8,7 @@ m, n, k = 64, 64, 64
 a = torch.rand((m, k), device="cuda:0")
 b = torch.rand((k, n), device="cuda:0")
 c = torch.zeros((m, n), device="cuda:0")
-ntest = 10
+ntest = 20
 
 def show_time(func):
     times = list()
@@ -16,6 +16,7 @@ def show_time(func):
     # GPU warm up
     for _ in range(10):
         res = func()
+    torch.cuda.empty_cache()
     for _ in range(ntest):
         # sync the threads to get accurate cuda running time
         torch.cuda.synchronize(device="cuda:0")
@@ -27,11 +28,15 @@ def show_time(func):
     return times, res
 
 def run_torch():
-    res = torch.matmul(input=a, other=b, out=c)
-    return res
+    torch.matmul(input=a, other=b, out=c)
+    return c
 
 def run_cuda():
     sgemm.torch_launch_sgemm(a, b, c, m, n, k)
+    return c
+
+def run_cuda_tile():
+    sgemm.torch_launch_sgemm_thread_tile_vec4(a, b, c, m, n, k)
     return c
 
 sgemm = load(name="sgemm",
@@ -43,10 +48,15 @@ if __name__ == '__main__':
     print("Running cuda...")
     cuda_time, cuda_res = show_time(run_cuda)
     print("Cuda time:  {:.3f}us".format(np.mean(cuda_time)))
+    
+    # print("Running cuda tile...")
+    # cuda_time_tile, cuda_res_tile = show_time(run_cuda_tile)
+    # print("Cuda time:  {:.3f}us".format(np.mean(cuda_time_tile)))
 
     print("Running torch...")
     torch_time, torch_res = show_time(run_torch)
     print("Torch time:  {:.3f}us".format(np.mean(torch_time)))
 
     torch.allclose(cuda_res, torch_res)
+    # torch.allclose(cuda_res_tile, torch_res)
     print("Kernel test passed.")

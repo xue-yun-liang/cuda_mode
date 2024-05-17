@@ -151,6 +151,14 @@ void launch_sgemm(float* h_a, float* h_b, float* h_c, int M, int N, int K){
   sgemm<<<grid, block>>>(h_a, h_b, h_c, M, N, K);
 }
 
+void launch_sgemm_thread_tile_vec4(float* h_a, float* h_b, float* h_c, int M, int N, int K){
+  dim3 block(32, 32);
+  dim3 grid((N + 31) / 32, (M + 31) / 32);
+
+  // Launch the kernel
+  sgemm_thread_tile_vec4<<<grid, block>>>(h_a, h_b, h_c, M, N, K);
+}
+
 void run_sgemm(float* h_a, float* h_b, float* h_c, int M, int N, int K) {
     float *d_a, *d_b, *d_c;
 
