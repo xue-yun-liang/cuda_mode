@@ -48,15 +48,10 @@ if __name__ == '__main__':
     print("Running cuda...")
     cuda_time, cuda_res = show_time(run_cuda)
     print("Cuda time:  {:.3f}us".format(np.mean(cuda_time)))
-    
-    # print("Running cuda tile...")
-    # cuda_time_tile, cuda_res_tile = show_time(run_cuda_tile)
-    # print("Cuda time:  {:.3f}us".format(np.mean(cuda_time_tile)))
 
     print("Running torch...")
     torch_time, torch_res = show_time(run_torch)
     print("Torch time:  {:.3f}us".format(np.mean(torch_time)))
 
     torch.allclose(cuda_res, torch_res)
-    # torch.allclose(cuda_res_tile, torch_res)
     print("Kernel test passed.")
