@@ -1,27 +1,5 @@
-![cuda-learn-note](https://github.com/DefTruth/CUDA-Learn-Note/assets/31974251/882271fe-ab60-4b0e-9440-2e0fa3c0fb6f)   
-
-<div align='center'>
-  <img src=https://img.shields.io/badge/Language-CUDA-brightgreen.svg >
-  <img src=https://img.shields.io/github/watchers/DefTruth/cuda-learn-note?color=9cc >
-  <img src=https://img.shields.io/github/forks/DefTruth/cuda-learn-note.svg?style=social >
-  <img src=https://img.shields.io/github/stars/DefTruth/cuda-learn-note.svg?style=social >
-  <img src=https://img.shields.io/badge/Release-v0.3-brightgreen.svg >
-  <img src=https://img.shields.io/badge/License-GPLv3.0-turquoise.svg >
- </div>   
-
-📒**CUDA-Learn-Notes**: CUDA 笔记 / 大模型手撕CUDA / C++笔记，更新随缘: flash_attn、sgemm、sgemv、warp reduce、block reduce、dot、elementwise、softmax、layernorm、rmsnorm、histogram、relu、sigmoid etc.
-<!--
-<p align="center"> <a > 🌟如果觉得有用，不妨给个🌟👆🏻Star支持一下吧~ </a> </p>
--->
-
-## 其他项目 🔥🔥 
-
-|🛠[lite.ai.toolkit](https://github.com/DefTruth/lite.ai.toolkit) | 💎[torchlm](https://github.com/DefTruth/torchlm) | 📒[statistic-learning-R-note](https://github.com/DefTruth/statistic-learning-R-note) | 🎉[cuda-learn-note](https://github.com/DefTruth/cuda-learn-note) | 📖[Awesome-LLM-Inference](https://github.com/DefTruth/Awesome-LLM-Inference) |   
-|:---:|:---:|:---:|:---:|:---:|
-|![](https://img.shields.io/github/stars/DefTruth/lite.ai.toolkit.svg?style=social) ![](https://img.shields.io/github/downloads/DefTruth/lite.ai.toolkit/total?color=ccf&label=downloads&logo=github&logoColor=lightgrey)| ![](https://img.shields.io/github/stars/DefTruth/torchlm.svg?style=social)   ![](https://static.pepy.tech/personalized-badge/torchlm?period=total&units=international_system&left_color=grey&right_color=blue&left_text=downloads)| ![](https://img.shields.io/github/stars/DefTruth/statistic-learning-R-note.svg?style=social) ![](https://img.shields.io/github/downloads/DefTruth/statistic-learning-R-note/total?color=ccf&label=downloads&logo=github&logoColor=lightgrey) |![](https://img.shields.io/github/stars/DefTruth/cuda-learn-note.svg?style=social) ![](https://img.shields.io/github/issues/DefTruth/cuda-learn-note?color=9cc)|  ![](https://img.shields.io/github/stars/DefTruth/Awesome-LLM-Inference.svg?style=social) ![](https://img.shields.io/github/downloads/DefTruth/Awesome-LLM-Inference/total?color=ccf&label=downloads&logo=github&logoColor=lightgrey)|
-
 ## 0x00 前言
-前段时间参加了一些**LLM AI Infra**面试，基本都要手撕**CUDA**⚡️，于是整体复习了一下**CUDA**优化的内容，也整理了一些高频题的写法。笔记分享在这里，不定期更新。关于**LLM AI Infra**，也推荐我整理的: 📖[Awesome-LLM-Inference](https://github.com/DefTruth/Awesome-LLM-Inference)  ![](https://img.shields.io/github/stars/DefTruth/Awesome-LLM-Inference.svg?style=social)
+**CUDA**高频题的写法。
 
  
 ## 0x01 📖目录
@@ -826,27 +804,12 @@ void hard_nms(std::vector<Box> &input, std::vector<Box> &output, float iou_thres
   }
 }
 ```
-CV相关的经常会要手撕NMS，也记录下。
 
 ## 0x0f 总结  ([©️back👆🏻](#kernellist))
 可以发现，大部分kernel的基本写法都是依赖warp reduce和block reduce的，基本上只要熟练应用warp functions各种场景的写法，应该问题不大；softmax需要考虑网格级同步的问题，或者online softmax以及FlashAttention；sgemm的优化是个很大的课题，不是案例中写的这么简单，但是入门的话，基本就是tiling的思想以及如何做索引之间的mapping；sgemv的优化则主要考虑K不同的值（因为M为1了），比如K=16,64,128等情况下，如何按照warp来处理；relu、sigmoid等都是elementwise的操作，很好实现，可以再考虑加点向量化优化访存；layer norm和rms norm在数学上其实也是挺清晰简单的，落实到cuda kernel时，只要按照逐个token来处理，headdim没有超过1024的情况下（一个block最多可以放1024个threads），可以放到一个block处理，这样并行化就很好写。当然，核心还是warp reduce和block reduce；NMS是乱入的，没有CUDA版本，别问了...
 
-## ©️License
-GNU General Public License v3.0
 
 ## References  
 - [flash-attention-minimal](https://github.com/tspeterkim/flash-attention-minimal): Flash Attention in ~100 lines of CUDA (forward pass only)
 
-## 🎉Contribute
-🌟如果觉得有用，不妨给个🌟👆🏻Star支持一下吧~
-
-<div align='center'>
-<a href="https://star-history.com/#DefTruth/Awesome-LLM-Inference&Date">
-  <picture align='center'>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=DefTruth/cuda-learn-note&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=DefTruth/cuda-learn-note&type=Date" />
-    <img width=450 height=300 alt="Star History Chart" src="https://api.star-history.com/svg?repos=DefTruth/cuda-learn-note&type=Date" />
-  </picture>
-</a>  
-</div>
 
