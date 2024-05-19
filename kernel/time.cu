@@ -5,13 +5,21 @@
 #include <iostream>
 #include "error.cuh"
 
-#ifndef USE_DP
-    typedef double real;
-    // const real EPSILON = 1.0e-15;
+#ifdef USE_DP
+typedef double real;
 #else
-    typedef float real;
-    // const real EPSILON = 1.0e-6f;
+typedef float real;
 #endif
+
+void check_real_type() {
+    if (sizeof(real) == sizeof(float)) {
+        printf("real is of type float.\n");
+    } else if (sizeof(real) == sizeof(double)) {
+        printf("real is of type double.\n");
+    } else {
+        printf("Unknown type.\n");
+    }
+}
 
 void arithmetic(real *x, const real x0, const int N) {
     for (int i=0; i<N; i++) {
@@ -36,10 +44,12 @@ void __global__ arithmetic_(real *d_x, const real x0, const int N) {
 }
 
 int main() {
-    const int N = 10000000;
+    const int N = 100000000;
     const real x0 = 10.0;
     real *h_x = new real[N];
     real *h_x_copy = new real[N];
+
+    check_real_type();
 
     // Initialize host array with some values
     for (int i = 0; i < N; i++) {
