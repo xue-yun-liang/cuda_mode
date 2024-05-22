@@ -1,7 +1,11 @@
 #include <torch/extension.h>
+#include "ops.h"
 
-torch::Tensor forward(torch::Tensor q, torch::Tensor k, torch::Tensor v);
+void torch_launch_reduce(const torch::Tensor &h_x, float &h_y, const int n) {
+    TORCH_CHECK(h_x.is_cuda(), "A must be a CUDA tensor");
+    launch_reduce((float*)h_x.data_ptr(), &h_y, n);
+}
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-    m.def("forward", torch::wrap_pybind_function(forward), "forward");
+    m.def("torch_launch_reduce", &torch_launch_reduce, "reduce kernel wrapper");
 }

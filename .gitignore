@@ -3,5 +3,6 @@
 *.dylib
 *.dll
 *.lib
+test.py
 .DS_Store
 build

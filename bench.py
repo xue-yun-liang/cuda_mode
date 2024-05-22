@@ -4,7 +4,7 @@ from torch.utils.cpp_extension import load
 import time
 import numpy as np
 
-m, n, k = 64, 64, 64
+m, n, k = 1024, 1024, 1024
 a = torch.rand((m, k), device="cuda:0")
 b = torch.rand((k, n), device="cuda:0")
 c = torch.zeros((m, n), device="cuda:0")
