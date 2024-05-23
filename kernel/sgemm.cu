@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <cuda_runtime.h>
+#include "error.cuh"
 
 #define WARP_SIZE 32
 #define INT4(value) (reinterpret_cast<int4*>(&(value))[0])
@@ -163,13 +164,13 @@ void run_sgemm(float* h_a, float* h_b, float* h_c, int M, int N, int K) {
     float *d_a, *d_b, *d_c;
 
     // Allocate device memory
-    cudaMalloc((void**)&d_a, M * K * sizeof(float));
-    cudaMalloc((void**)&d_b, K * N * sizeof(float));
-    cudaMalloc((void**)&d_c, M * N * sizeof(float));
+    CHECK(cudaMalloc((void**)&d_a, M * K * sizeof(float)));
+    CHECK(cudaMalloc((void**)&d_b, K * N * sizeof(float)));
+    CHECK(cudaMalloc((void**)&d_c, M * N * sizeof(float)));
 
     // Copy data from host to device
-    cudaMemcpy(d_a, h_a, M * K * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_b, h_b, K * N * sizeof(float), cudaMemcpyHostToDevice);
+    CHECK(cudaMemcpy(d_a, h_a, M * K * sizeof(float), cudaMemcpyHostToDevice));
+    CHECK(cudaMemcpy(d_b, h_b, K * N * sizeof(float), cudaMemcpyHostToDevice));
 
     // Define block and grid dimensions
     dim3 block(32, 32);
@@ -179,12 +180,12 @@ void run_sgemm(float* h_a, float* h_b, float* h_c, int M, int N, int K) {
     sgemm<<<grid, block>>>(d_a, d_b, d_c, M, N, K);
 
     // Copy the result back to the host
-    cudaMemcpy(h_c, d_c, M * N * sizeof(float), cudaMemcpyDeviceToHost);
+    CHECK(cudaMemcpy(h_c, d_c, M * N * sizeof(float), cudaMemcpyDeviceToHost));
 
     // Free device memory
-    cudaFree(d_a);
-    cudaFree(d_b);
-    cudaFree(d_c);
+    CHECK(cudaFree(d_a));
+    CHECK(cudaFree(d_b));
+    CHECK(cudaFree(d_c));
 }
 
 int main() {
