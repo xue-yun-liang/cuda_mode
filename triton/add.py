@@ -3,6 +3,7 @@ import torch
 import triton
 import triton.language as tl
 
+debug = False
 
 @triton.jit
 def add_kernel(x_ptr,  # *Pointer* to first input vector.
@@ -19,15 +20,22 @@ def add_kernel(x_ptr,  # *Pointer* to first input vector.
     # For instance, if you had a vector of length 256 and block_size of 64, the programs
     # would each access the elements [0:64, 64:128, 128:192, 192:256].
     # Note that offsets is a list of pointers:
+    if debug: tl.device_print("pid:", pid)
     block_start = pid * BLOCK_SIZE
+    if debug: tl.device_print("block_start:", block_start)
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
+    if debug: tl.device_print("offsets:",offsets)
     # Create a mask to guard memory operations against out-of-bounds accesses.
     mask = offsets < n_elements
+    if debug: tl.device_print("mask:", mask)
     # Load x and y from DRAM, masking out any extra elements in case the input is not a
     # multiple of the block size.
     x = tl.load(x_ptr + offsets, mask=mask)
     y = tl.load(y_ptr + offsets, mask=mask)
+    if debug: tl.device_print("x:", x)
+    if debug: tl.device_print("x:", y)
     output = x + y
+    if debug: tl.device_print("output:", output)
     # Write x + y back to DRAM.
     tl.store(output_ptr + offsets, output, mask=mask)
     
@@ -44,21 +52,10 @@ def add(x: torch.Tensor, y: torch.Tensor):
     #  - Each torch.tensor object is implicitly converted into a pointer to its first element.
     #  - `triton.jit`'ed functions can be indexed with a launch grid to obtain a callable GPU kernel.
     #  - Don't forget to pass meta-parameters as keywords arguments.
-    add_kernel[grid](x, y, output, n_elements, BLOCK_SIZE=1024)
+    add_kernel[grid](x, y, output, n_elements, BLOCK_SIZE=1)
     # We return a handle to z but, since `torch.cuda.synchronize()` hasn't been called, the kernel is still
     # running asynchronously at this point.
     return output
-
-torch.manual_seed(0)
-size = 98432
-x = torch.rand(size, device='cuda')
-y = torch.rand(size, device='cuda')
-output_torch = x + y
-output_triton = add(x, y)
-print(output_torch)
-print(output_triton)
-print(f'The maximum difference between torch and triton is '
-      f'{torch.max(torch.abs(output_torch - output_triton))}')
 
 
 @triton.testing.perf_report(
@@ -85,4 +82,15 @@ def benchmark(size, provider):
     gbps = lambda ms: 12 * size / ms * 1e-6
     return gbps(ms), gbps(max_ms), gbps(min_ms)
 
-benchmark.run(print_data=True, show_plots=False, save_path="./asset")
+if __name__ == '__main__':
+    torch.manual_seed(0)
+    size = 4
+    x = torch.rand(size, device='cuda')
+    y = torch.rand(size, device='cuda')
+    output_torch = x + y
+    output_triton = add(x, y)
+    print(output_torch)
+    print(output_triton)
+    print(f'The maximum difference between torch and triton is '
+        f'{torch.max(torch.abs(output_torch - output_triton))}')
+    # benchmark.run(print_data=True, show_plots=False, save_path="./asset/")
