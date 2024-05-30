@@ -17,10 +17,7 @@
 #include <vector>
 #include <algorithm>
 #include <cuda_runtime.h>
-
-#define WARP_SIZE 32
-#define INT4(value) (reinterpret_cast<int4*>(&(value))[0])
-#define FLOAT4(value) (reinterpret_cast<float4*>(&(value))[0])
+#include "../include/kernel.cuh"
 
 // SGEMM: Block Tile + K Tile, with smem
 // Block Tile (BM, BN) + K Tile (BK=32)

@@ -3,20 +3,8 @@
 #include <float.h>
 #include <cuda_runtime.h>
 #include "error.cuh"
+#include "../include/kernel.cuh"
 
-#define WARP_SIZE 32
-#define FLOAT4(value) (reinterpret_cast<float4 *>(&(value))[0])
-
-template <const int kWarpSize = WARP_SIZE>
-__device__ __forceinline__ float warp_reduce_sum(float val)
-{
-#pragma unroll
-    for (int mask = kWarpSize >> 1; mask >= 1; mask >>= 1)
-    {
-        val += __shfl_xor_sync(0xffffffff, val, mask);
-    }
-    return val;
-}
 
 // SGEMV: Warp SGEMV K32
 // assume K is a multiple of 32, each warp handles one row
