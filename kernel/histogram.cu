@@ -17,6 +17,7 @@ __global__ void histogram(int* a, int* y, int N) {
 // grid(N/128), block(128/4)
 // a: Nx1, y: count histogram
 __global__ void histogram_vec4(int* a, int* y, int N) {
+  // each thread handle 4 consistent element
   int idx = 4 * (blockIdx.x * blockDim.x + threadIdx.x);
   if (idx < N) {
     int4 reg_a = INT4(a[idx]);

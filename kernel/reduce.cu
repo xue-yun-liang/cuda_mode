@@ -220,12 +220,10 @@ void launch_reduce(const real *d_x, real *d_y, const int N)
 }
 
 // Warp Reduce Sum
-template <const int kWarpSize = WARP_SIZE>
-__device__ __forceinline__ float warp_reduce_sum(float val)
-{
-#pragma unroll
-  for (int mask = kWarpSize >> 1; mask >= 1; mask >>= 1)
-  {
+template<const int kWarpSize = WARP_SIZE>
+__device__ __forceinline__ float warp_reduce_sum(float val) {
+  #pragma unroll
+  for (int mask = kWarpSize >> 1; mask >= 1; mask >>= 1) {
     val += __shfl_xor_sync(0xffffffff, val, mask);
   }
   return val;
