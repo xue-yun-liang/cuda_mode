@@ -2,9 +2,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <cuda_runtime.h>
-#include "error.cuh"
 #include "../include/kernel.cuh"
-
+#include "../include/error.cuh"
 
 const double error = 1.0e-15;
 const double a = 1.23;
@@ -115,8 +114,6 @@ int main(){
     CHECK(cudaFree(d_x));
     CHECK(cudaFree(d_y));
     CHECK(cudaFree(d_z));
-
-
-    // cudaDeviceSynchronize();
+    
     return 0;
 }

@@ -4,12 +4,13 @@
 #include <cuda_runtime.h>
 #include "error.cuh"
 #include "../include/kernel.cuh"
+#include "../include/error.cuh"
 
 // Layer Norm: x: NxK(K=128<1024), y': NxK, y'=x-mean(x)/std(x) each row
 // mean(x) = sum(x)/K, 1/std(x) = rsqrtf( sum( (x-mean(x))^2 )/K ) each row
 // grid(N*K/K), block(K<1024) N=batch_size*seq_len, K=hidden_size
 // y=y'*g + b (g: scale, b: bias)
-template<const int NUM_THREADS=128>
+template<const int NUM_THREADS>
 __global__ void layer_norm(float* x, float* y, float g, float b, int N, int K) {
   int tid = threadIdx.x; // 0..K-1
   int bid = blockIdx.x; // 0..N-1
@@ -35,7 +36,7 @@ __global__ void layer_norm(float* x, float* y, float g, float b, int N, int K) {
 // mean(x) = sum(x)/K, 1/std(x) = rsqrtf( sum( (x-mean(x))^2 )/K ) each row
 // grid(N*K/K), block(K/4<1024) N=batch_size*seq_len, K=hidden_size
 // y=y'*g + b (g: scale, b: bias)
-template<const int NUM_THREADS=128/4>
+template<const int NUM_THREADS>
 __global__ void layer_norm_vec4(float* x, float* y, float g, float b, int N, int K) {
   int tid = threadIdx.x; // 0..K-1
   int bid = blockIdx.x; // 0..N-1
@@ -44,9 +45,8 @@ __global__ void layer_norm_vec4(float* x, float* y, float g, float b, int N, int
 
   __shared__ float s_mean; // shared within block
   __shared__ float s_variance; // shared within block
-  float4 reg_x = FLOAT4(x[idx])
-  float value = (idx < N * K) ? (reg_x.x + reg_x.y 
-                               + reg_x.z + reg_x.w) : 0.0f;
+  float4 reg_x = FLOAT4(x[idx]);
+  float value = (idx < N * K) ? (reg_x.x + reg_x.y + reg_x.z + reg_x.w) : 0.0f;
   float sum = block_reduce_sum<NUM_THREADS>(value);
   if (tid == 0) s_mean = sum / (float) K;
   // wait for s_mean in shared memory to be ready for all threads

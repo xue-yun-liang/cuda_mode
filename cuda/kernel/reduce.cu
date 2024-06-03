@@ -1,6 +1,7 @@
-#include "error.cuh"
 #include <stdio.h>
 #include <float.h>
+#include "../include/error.cuh"
+#include "../include/kernel.cuh"
 
 #ifdef DUSE_DP
 typedef double real;
@@ -8,9 +9,6 @@ typedef double real;
 typedef float real;
 #endif
 
-#define WARP_SIZE 32
-#define INT4(value) (reinterpret_cast<int4 *>(&(value))[0])
-#define FLOAT4(value) (reinterpret_cast<float4 *>(&(value))[0])
 
 const int N = 2048;         // Example size, should be a power of 2 for simplicity
 const int BLOCK_SIZE = 128; // Example block size, can be tuned
@@ -219,31 +217,10 @@ void launch_reduce(const real *d_x, real *d_y, const int N)
   reduce_shfl_xor_sync<<<grid_size, block_size, shared_mem_size>>>(d_x, d_y, N);
 }
 
-// Warp Reduce Sum
-template<const int kWarpSize = WARP_SIZE>
-__device__ __forceinline__ float warp_reduce_sum(float val) {
-  #pragma unroll
-  for (int mask = kWarpSize >> 1; mask >= 1; mask >>= 1) {
-    val += __shfl_xor_sync(0xffffffff, val, mask);
-  }
-  return val;
-}
-
-// Warp Reduce Max
-template <const int kWarpSize = WARP_SIZE>
-__device__ __forceinline__ float warp_reduce_max(float val)
-{
-#pragma unroll
-  for (int mask = kWarpSize >> 1; mask >= 1; mask >>= 1)
-  {
-    val = fmaxf(val, __shfl_xor_sync(0xffffffff, val, mask));
-  }
-  return val;
-}
 
 // Block reduce sum/max/min device helper for Layer/RMS Norm/Softmax etc.
 // grid 1D block 1D, grid(N/128), block(128)
-template <const int NUM_THREADS = 128>
+template <const int NUM_THREADS>
 __device__ __forceinline__ float block_reduce_sum(float val)
 {
   // always <= 32 warps per block (limited by 1024 threads per block)
@@ -261,7 +238,7 @@ __device__ __forceinline__ float block_reduce_sum(float val)
   return val;
 }
 
-template <const int NUM_THREADS = 128>
+template <const int NUM_THREADS>
 __device__ __forceinline__ float block_reduce_max(float val)
 {
   // always <= 32 warps per block (limited by 1024 threads per block)
@@ -283,7 +260,7 @@ __device__ __forceinline__ float block_reduce_max(float val)
 // Block All Reduce Sum
 // grid(N/128), block(128)
 // a: Nx1, y=sum(a)
-template <const int NUM_THREADS = 128>
+template <const int NUM_THREADS>
 __global__ void block_all_reduce_sum(float *a, float *y, int N)
 {
   int tid = threadIdx.x;
@@ -311,7 +288,7 @@ __global__ void block_all_reduce_sum(float *a, float *y, int N)
 // Block All Reduce Sum + float4
 // grid(N/128), block(128/4)
 // a: Nx1, y=sum(a)
-template <const int NUM_THREADS = 128 / 4>
+template <const int NUM_THREADS>
 __global__ void block_all_reduce_sum_vec4(float *a, float *y, int N)
 {
   int tid = threadIdx.x;
@@ -364,41 +341,41 @@ real run_reduce(const real *h_x, real *h_y, const int N)
 }
 
 
-void run_block_all_sum()
-{
+// void run_block_all_sum()
+// {
 
-  // Allocate unified memory
-  float *x, *y;
-  CHECK(cudaMallocManaged(&x, N * sizeof(float)));
-  CHECK(cudaMallocManaged(&y, N * sizeof(float)));
+//   // Allocate unified memory
+//   float *x, *y;
+//   CHECK(cudaMallocManaged(&x, N * sizeof(float)));
+//   CHECK(cudaMallocManaged(&y, N * sizeof(float)));
 
-  *y = 0;
-  for (int i = 0; i < N; ++i) { x[i] = static_cast<float>(std::rand() % 10); }
+//   *y = 0;
+//   for (int i = 0; i < N; ++i) { x[i] = static_cast<float>(std::rand() % 10); }
 
 
-  printf("vector x:\n");
-  for (int i = 0; i < N; ++i) { printf("%d ", (int)x[i]); }
+//   printf("vector x:\n");
+//   for (int i = 0; i < N; ++i) { printf("%d ", (int)x[i]); }
 
-  const int grid_size(N / 128);
-  const int block_size(128 / 4);
-  size_t shared_mem_size = block_size * sizeof(real);
+//   const int grid_size(N / 128);
+//   const int block_size(128 / 4);
+//   size_t shared_mem_size = block_size * sizeof(real);
 
-  block_all_reduce_sum<<<grid_size, block_size, shared_mem_size>>>(x, y, N);
-  CHECK(cudaDeviceSynchronize());
-  double sum = 0.0;
-  for (int i = 0; i < N; i++)
-  {
-    sum += x[i];
-  }
+//   block_all_reduce_sum<<<grid_size, block_size, shared_mem_size>>>(x, y, N);
+//   CHECK(cudaDeviceSynchronize());
+//   double sum = 0.0;
+//   for (int i = 0; i < N; i++)
+//   {
+//     sum += x[i];
+//   }
   
 
-  printf("reduce result is: %d \n", (int)*y);
-  printf("cpu ver result is: %d \n", (int) sum);
+//   printf("reduce result is: %d \n", (int)*y);
+//   printf("cpu ver result is: %d \n", (int) sum);
 
-  CHECK(cudaFree(x));
-  CHECK(cudaFree(y));
+//   CHECK(cudaFree(x));
+//   CHECK(cudaFree(y));
 
-}
+// }
 
 void reduce_wrapper(real *d_x, real *d_y, int size)
 {
@@ -408,8 +385,6 @@ void reduce_wrapper(real *d_x, real *d_y, int size)
 
 int main()
 {
-
-  run_block_all_sum();
 
   return 0;
 }

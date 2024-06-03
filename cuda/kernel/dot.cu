@@ -2,16 +2,13 @@
 #include <stdlib.h>
 #include <float.h>
 #include <cuda_runtime.h>
-#include "error.cuh"
-
-#define WARP_SIZE 32
-#define FLOAT4(value) (reinterpret_cast<float4 *>(&(value))[0])
-
+#include "../include/error.cuh"
+#include "../include/kernel.cuh"
 
 // Dot Product
 // grid(N/128), block(128)
 // a: Nx1, b: Nx1, y=sum(elementwise_mul(a,b))
-template<const int NUM_THREADS = 128>
+template<const int NUM_THREADS>
 __global__ void dot(float* a, float* b, float* y, int N) {
   int tid = threadIdx.x;
   int idx = blockIdx.x * NUM_THREADS + tid;
@@ -36,7 +33,7 @@ __global__ void dot(float* a, float* b, float* y, int N) {
 // Dot Product + Vec4
 // grid(N/128), block(128/4)
 // a: Nx1, b: Nx1, y=sum(elementwise_mul(a,b))
-template<const int NUM_THREADS = 128/4>
+template<const int NUM_THREADS>
 __global__ void dot_vec4(float* a, float* b, float* y, int N) {
   int tid = threadIdx.x;
   int idx = (blockIdx.x * NUM_THREADS + tid) * 4;
@@ -58,13 +55,4 @@ __global__ void dot_vec4(float* a, float* b, float* y, int N) {
   prod = (lane < NUM_WARPS) ? reduce_smem[lane] : 0.0f;
   if (warp == 0) prod = warp_reduce_sum<NUM_WARPS>(prod);
   if (tid == 0) atomicAdd(y, prod);
-}
-
-void run(){
-
-}
-
-int main(){
-
-    return 0;
 }

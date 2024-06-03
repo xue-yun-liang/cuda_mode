@@ -1,20 +1,11 @@
 #include <iostream>
 #include <cuda_runtime.h>
 #include <vector>
-#include "error.cuh"
 #include "../include/kernel.cuh"
+#include "../include/error.cuh"
 
 #define WARP_SIZE 32
 constexpr int NUM_THREADS = 128;
-
-template<const int kWarpSize>
-__device__ __forceinline__ float warp_reduce_sum(float val) {
-  #pragma unroll
-  for (int mask = kWarpSize >> 1; mask >= 1; mask >>= 1) {
-    val += __shfl_xor_sync(0xffffffff, val, mask);
-  }
-  return val;
-}
 
 // Softmax x: N, y: N
 // grid(N/128), block(K=128)
@@ -47,7 +38,7 @@ __global__ void softmax(float* x, float* y, float* total, int N) {
 
 // Softmax x: N, y: N
 // grid(N/128), block(K=128)
-template<const int NUM_THREADS = 128>
+template<const int NUM_THREADS>
 __global__ void softmax_v2(float* x, float* y, float* total, int N) {
   const int tid = threadIdx.x;
   const int idx = blockIdx.x * blockDim.x + tid; 
@@ -63,7 +54,7 @@ __global__ void softmax_v2(float* x, float* y, float* total, int N) {
 
 // Softmax Vec4 x: N, y: N
 // grid(N/128), block(128/4)
-template<const int NUM_THREADS = 128/4>
+template<const int NUM_THREADS>
 __global__ void softmax_v2_vec4(float* x, float* y, float* total, int N) {
   const int tid = threadIdx.x;
   const int idx = (blockIdx.x * blockDim.x + tid) * 4; 
@@ -88,6 +79,55 @@ __global__ void softmax_v2_vec4(float* x, float* y, float* total, int N) {
     reg_y.w = reg_exp.w / (*total);
     FLOAT4(y[idx]) = reg_y; 
   }
+}
+
+template<const int NUM_THREADS>
+__global__ void safe_softmax(float* x, float* y, int N) {
+  const int tid = threadIdx.x;
+  const int idx = blockIdx.x * blockDim.x + tid;
+  constexpr int NUM_WARPS = (NUM_THREADS + WARP_SIZE - 1) / WARP_SIZE;
+  __shared__ float max_smem[NUM_WARPS];
+  __shared__ float sum_smem[NUM_WARPS];
+
+  // Step 1: Find the max value
+  float val = (idx < N) ? x[idx] : -INFINITY;
+  int warp_id = tid / WARP_SIZE;
+  int lane_id = tid % WARP_SIZE;
+  // find the max val in a warp, and store it to max_smem
+  // because there are `NUM_WARPS`s warp, so each max_smem 
+  //    store one max val in one warp
+  float max_val = warp_reduce_max<WARP_SIZE>(val);
+  if (lane_id == 0) max_smem[warp_id] = max_val;
+  __syncthreads();
+
+  // find the max val in all warps
+  if (warp_id == 0) {
+    max_val = (tid < NUM_WARPS) ? max_smem[lane_id] : -INFINITY;
+    // FIXME: the warp_reduce_max func maybe not suitable to the NUM_WARPS level reduce
+    max_val = warp_reduce_max<NUM_WARPS>(max_val);
+    if (lane_id == 0) max_smem[0] = max_val;
+  }
+  __syncthreads();
+  
+  float max_value = max_smem[0];
+
+  // Step 2: Compute the exponentials and their sum
+  val = (idx < N) ? expf(x[idx] - max_value) : 0.0f;
+  float sum_val = warp_reduce_sum<WARP_SIZE>(val);
+  if (lane_id == 0) sum_smem[warp_id] = sum_val;
+  __syncthreads();
+
+  if (warp_id == 0) {
+    sum_val = (tid < NUM_WARPS) ? sum_smem[lane_id] : 0.0f;
+    sum_val = warp_reduce_sum<NUM_WARPS>(sum_val);
+    if (lane_id == 0) sum_smem[0] = sum_val;
+  }
+  __syncthreads();
+
+  float total_sum = sum_smem[0];
+
+  // Step 3: Normalize the values
+  if (idx < N) y[idx] = expf(x[idx] - max_value) / total_sum;
 }
 
 
@@ -202,11 +242,6 @@ void run(const std::vector<float>& input) {
     cudaFree(d_x);
     cudaFree(d_y);
     cudaFree(d_total);
-
-    // Print the result
-    for (int i = 0; i < N; ++i) {
-        std::cout << "y[" << i << "] = " << output[i] << std::endl;
-    }
 }
 
 int main() {

@@ -1,4 +1,4 @@
-#include "error.cuh"
+#include "../include/error.cuh"
 #include <stdio.h>
 
 int main(int argc, char *argv[])

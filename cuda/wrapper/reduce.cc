@@ -1,5 +1,5 @@
 #include <torch/extension.h>
-#include "ops.h"
+#include "../include/wrapper.h"
 
 void torch_launch_reduce(const torch::Tensor &h_x, float &h_y, const int n) {
     TORCH_CHECK(h_x.is_cuda(), "A must be a CUDA tensor");

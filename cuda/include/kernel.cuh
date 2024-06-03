@@ -1,6 +1,3 @@
-#define WARP_SIZE 32
-#define INT4(value) (reinterpret_cast<int4*>(&(value))[0])
-#define FLOAT4(value) (reinterpret_cast<float4*>(&(value))[0])
 /*
 this project include all ops as follows:
     elementwise_add
@@ -14,6 +11,18 @@ this project include all ops as follows:
     relu
     layernorm
 */
+#ifndef WARP_SIZE
+#define WARP_SIZE 32
+#endif
+
+#ifndef INT4
+#define INT4(value) (reinterpret_cast<int4*>(&(value))[0])
+#endif
+
+#ifndef FLOAT4
+#define FLOAT4(value) (reinterpret_cast<float4*>(&(value))[0])
+#endif
+
 
 // ElementWise Add  
 // grid(N/128), block(128)
@@ -26,12 +35,26 @@ __global__ void elementwise_add(float* a, float* b, float* c, int N);
 __global__ void elementwise_add_vec4(float* a, float* b, float* c, int N);
 
 // Warp Reduce Sum
-template <const int kWarpSize = WARP_SIZE>
-__device__ __forceinline__ float warp_reduce_sum(float val);
+template<const int kWarpSize = WARP_SIZE>
+__device__ __forceinline__ float warp_reduce_sum(float val) {
+  #pragma unroll
+  for (int mask = kWarpSize >> 1; mask >= 1; mask >>= 1) {
+    val += __shfl_xor_sync(0xffffffff, val, mask);
+  }
+  return val;
+}
 
 // Warp Reduce Max
 template <const int kWarpSize = WARP_SIZE>
-__device__ __forceinline__ float warp_reduce_max(float val);
+__device__ __forceinline__ float warp_reduce_max(float val)
+{
+#pragma unroll
+  for (int mask = kWarpSize >> 1; mask >= 1; mask >>= 1)
+  {
+    val = fmaxf(val, __shfl_xor_sync(0xffffffff, val, mask));
+  }
+  return val;
+}
 
 // Block reduce sum/max/min device helper for Layer/RMS Norm/Softmax etc.
 // grid 1D block 1D, grid(N/128), block(128)

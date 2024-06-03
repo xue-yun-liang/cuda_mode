@@ -1,5 +1,5 @@
 #include <torch/extension.h>
-#include "ops.h"
+#include "../include/wrapper.h"
 
 void torch_launch_sgemm(const torch::Tensor &A, const torch::Tensor &B,
                         torch::Tensor &C, int64_t M, int64_t N, int64_t K) {

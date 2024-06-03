@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <float.h>
 #include <cuda_runtime.h>
-#include "error.cuh"
+#include "../include/error.cuh"
 #include "../include/kernel.cuh"
+
 
 
 // SGEMV: Warp SGEMV K32
@@ -71,7 +72,7 @@ __global__ void sgemv_k128(float *a, float *x, float *y, int M, int K)
 // NUM_THREADS=128, NUM_WARPS=NUM_THREADS/WARP_SIZE;
 // NUM_ROWS=NUM_WARPS * ROW_PER_WARP, grid(M/NUM_ROWS), block(32,NUM_WARPS)
 // a: MxK, x: Kx1, y: Mx1, compute: y = a * x
-template <const int ROW_PER_WARP = 2>
+template <const int ROW_PER_WARP>
 __global__ void sgemv_k16(float *A, float *x, float *y, int M, int K)
 {
     constexpr int K_WARP_SIZE = (WARP_SIZE + ROW_PER_WARP - 1) / ROW_PER_WARP;
