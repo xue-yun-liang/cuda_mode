@@ -8,4 +8,6 @@ test.py
 build
 *.txt
 __pycache__
-test*
+test*.cu
+test*.py
+test*.txt

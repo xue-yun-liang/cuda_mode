@@ -33,17 +33,23 @@ __global__ void safe_softmax(float* x, float* y, int N) {
   float val = (idx < N) ? x[idx] : -INFINITY;
   int warp_id = tid / WARP_SIZE;
   int lane_id = tid % WARP_SIZE;
+  // find the max val in a warp, and store it to max_smem
+  // because there are `NUM_WARPS`s warp, so each max_smem 
+  //    store one max val in one warp
   float max_val = warp_reduce_max<WARP_SIZE>(val);
   if (lane_id == 0) max_smem[warp_id] = max_val;
   __syncthreads();
 
+  // find the max val in all warps
   if (warp_id == 0) {
     max_val = (tid < NUM_WARPS) ? max_smem[lane_id] : -INFINITY;
+    // FIXME: the warp_reduce_max func maybe not suitable to the NUM_WARPS level reduce
     max_val = warp_reduce_max<NUM_WARPS>(max_val);
     if (lane_id == 0) max_smem[0] = max_val;
   }
+  if (lane_id == 0) printf("the max val is: %f", max_smem[0]);
   __syncthreads();
-
+  
   float max_value = max_smem[0];
 
   // Step 2: Compute the exponentials and their sum

@@ -41,7 +41,7 @@ def run_cuda_tile():
 
 sgemm = load(name="sgemm",
              extra_include_paths=["include"],
-             sources=["kernel/sgemm.cu", "kernel/sgemm.cc"],
+             sources=["cuda/kernel/sgemm.cu", "cuda/kernel/sgemm.cc"],
              verbose=True)
 
 if __name__ == '__main__':
