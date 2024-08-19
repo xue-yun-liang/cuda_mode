@@ -212,7 +212,7 @@ void run_softmax(){
 
 }
 
-void run(const std::vector<float>& input) {
+std::vector<float> run(const std::vector<float>& input) {
     const int N = input.size();
     const int size = N * sizeof(float);
 
@@ -242,23 +242,15 @@ void run(const std::vector<float>& input) {
     cudaFree(d_x);
     cudaFree(d_y);
     cudaFree(d_total);
+    return output;
 }
 
 int main() {
-    // Example input
     const int N = 128;
-    std::vector<float> input(N);
+    std::vector<float> input{1, 2, 3, 4};
+    std::vector<float> output;
     srand(time(0));
-    for(int i=0;i<N;i++){
-      input[i]=rand()%5;
-    }
 
-    for(int i=0;i<N;i++)
-      std::cout<<input[i]<<" ";
-    std::cout<<std::endl;
-
-    // Run the softmax function
-    run(input);
-
+    output = run(input);
     return 0;
 }

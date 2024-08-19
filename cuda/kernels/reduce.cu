@@ -30,6 +30,7 @@ __global__ void recude_error(real *d_x, int N)
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int offset = N / 2; offset > 0; offset /= 2)
   {
+    // 导致数据覆盖
     if (tid < offset)
       d_x[tid] += d_x[tid + offset];
   }
@@ -124,7 +125,7 @@ __global__ void reduce_share_atomic(const real *d_x, real *d_y, int N)
   }
 }
 
-real ruNreduce(const real *d_x)
+real runreduce(const real *d_x)
 {
   const int grid_size = (N + BLOCK_SIZE - 1) / BLOCK_SIZE;
   const int smem = sizeof(real) * BLOCK_SIZE;
@@ -340,42 +341,6 @@ real run_reduce(const real *h_x, real *h_y, const int N)
   return *h_y;
 }
 
-
-// void run_block_all_sum()
-// {
-
-//   // Allocate unified memory
-//   float *x, *y;
-//   CHECK(cudaMallocManaged(&x, N * sizeof(float)));
-//   CHECK(cudaMallocManaged(&y, N * sizeof(float)));
-
-//   *y = 0;
-//   for (int i = 0; i < N; ++i) { x[i] = static_cast<float>(std::rand() % 10); }
-
-
-//   printf("vector x:\n");
-//   for (int i = 0; i < N; ++i) { printf("%d ", (int)x[i]); }
-
-//   const int grid_size(N / 128);
-//   const int block_size(128 / 4);
-//   size_t shared_mem_size = block_size * sizeof(real);
-
-//   block_all_reduce_sum<<<grid_size, block_size, shared_mem_size>>>(x, y, N);
-//   CHECK(cudaDeviceSynchronize());
-//   double sum = 0.0;
-//   for (int i = 0; i < N; i++)
-//   {
-//     sum += x[i];
-//   }
-  
-
-//   printf("reduce result is: %d \n", (int)*y);
-//   printf("cpu ver result is: %d \n", (int) sum);
-
-//   CHECK(cudaFree(x));
-//   CHECK(cudaFree(y));
-
-// }
 
 void reduce_wrapper(real *d_x, real *d_y, int size)
 {
